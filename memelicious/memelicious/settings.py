@@ -127,8 +127,8 @@ CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_BEAT_SCHEDULE = {
- 'get-videos-every-minute': {
-       'task': 'app.tasks.get_youtube_video',
-       'schedule': 60.0,
+    'get-videos-every-minute': {
+        'task': 'app.tasks.get_youtube_video',
+        'schedule': 30,
     },
 }

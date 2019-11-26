@@ -1,3 +1,6 @@
 base:
-  api-key: ENTER_YOUR_API_KEY
+  api-key: 
+  - ENTER_YOUR_FIRST_API_KEY
+  - ENTER_YOUR_SECOND_API_KEY
+  and so on 
   

@@ -1,18 +1,19 @@
 import os
 import datetime
 import googleapiclient.discovery
+from googleapiclient.errors import HttpError
 from celery import shared_task
-from django.http import JsonResponse
 import yaml
+import json
 
 from .models import YT_videos
 
-with open("config.yml", 'r') as ymlfile:	
+with open("config.yml", 'r') as ymlfile:
     config = yaml.full_load(ymlfile)
 
-@shared_task
-def get_videos(x,y):
-    return x+y
+api_key_in_list = 0
+
+
 @shared_task
 def get_youtube_video():
     # Disable OAuthlib's HTTPS verification when running locally.
@@ -21,33 +22,56 @@ def get_youtube_video():
 
     api_service_name = "youtube"
     api_version = "v3"
-    DEVELOPER_KEY = str(config['base']['api-key'])
+
+    global api_key_in_list
+    try:
+        DEVELOPER_KEY = str(config['base']['api-key'][api_key_in_list])
+    except IndexError:
+        # Consumed all the keys and back to the
+        # first key to try again if quota is replenished.
+        api_key_in_list = 0
+        reason = "All keys have their quota extinguished."
+        return reason
 
     youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, developerKey = DEVELOPER_KEY)
+        api_service_name, api_version, developerKey=DEVELOPER_KEY)
 
-    time_to_get_videos_from = (datetime.datetime.utcnow()-datetime.timedelta(minutes=1)).isoformat("T")+"Z"
-
+    time_to_get_videos_from = (
+        datetime.datetime.utcnow() - datetime.timedelta(minutes=1)
+    ).isoformat("T")+"Z"
     request = youtube.search().list(
         part="snippet",
         order="date",
         publishedAfter=time_to_get_videos_from,
-        q="comedy",
+        q="meme",
         type="video",
     )
-    response = request.execute()
-    save_youtube_video(response)
-    return response['items']
+
+    try:
+        response = request.execute()
+    except HttpError as err:
+        if err.resp.get('content-type', '').startswith('application/json'):
+            reason = json.loads(err.content).get(
+                'error').get('errors')[0].get('reason')
+            if reason == "quotaExceeded" or reason == "dailyLimitExceeded":
+                api_key_in_list += 1
+                return reason
+    else:
+        save_youtube_video(response)
+        return response
+
 
 def save_youtube_video(request):
-        for item in request['items']:
-            video = YT_videos()
-            video.videoId = item['id']['videoId']
-            video.title = item['snippet']['title']
-            video.description = item['snippet']['description']
-            video.publishing_date = item['snippet']['publishedAt']
-            video.default_thumnail = str(item['snippet']['thumbnails']['default']['url'])
-            video.medium_thumnail = str(item['snippet']['thumbnails']['medium']['url'])
-            video.high_thumnail =  str(item['snippet']['thumbnails']['high']['url'])
-            video.save()
-
+    for item in request['items']:
+        video = YT_videos()
+        video.videoId = item['id']['videoId']
+        video.title = item['snippet']['title']
+        video.description = item['snippet']['description']
+        video.publishing_date = item['snippet']['publishedAt']
+        video.default_thumbnail = str(
+            item['snippet']['thumbnails']['default']['url'])
+        video.medium_thumbnail = str(
+            item['snippet']['thumbnails']['medium']['url'])
+        video.high_thumbnail = str(
+            item['snippet']['thumbnails']['high']['url'])
+        video.save()

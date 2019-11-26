@@ -97,7 +97,7 @@ __pypackages__/
 # Celery stuff
 celerybeat-schedule
 celerybeat.pid
-
+*.db
 # SageMath parsed files
 *.sage.py
 
@@ -130,3 +130,6 @@ dmypy.json
 
 # Configuration file
 config.yml
+
+# VS Code 
+.vscode/
