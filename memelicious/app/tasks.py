@@ -33,11 +33,11 @@ def get_youtube_video():
         order="date",
         publishedAfter=time_to_get_videos_from,
         q="comedy",
-        type="video"
+        type="video",
     )
     response = request.execute()
     save_youtube_video(response)
-    return response['items'][0]['snippet']['thumbnails']['default']['url']
+    return response['items']
 
 def save_youtube_video(request):
         for item in request['items']:
